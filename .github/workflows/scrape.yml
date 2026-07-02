@@ -27,10 +27,7 @@ jobs:
         with:
           repository: MatiAlevMe/guia-laboral
           path: ../guia-laboral
-          # Token required if guia-laboral is PRIVATE.
-          # If public: remove the line below entirely.
-          # Add GH_PAT secret in repo Settings → Secrets → Actions
-          # token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GH_PAT }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
