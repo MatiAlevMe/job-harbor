@@ -27,7 +27,10 @@ jobs:
         with:
           repository: MatiAlevMe/guia-laboral
           path: ../guia-laboral
-          token: ${{ secrets.GH_PAT || github.token }}
+          # Token required if guia-laboral is PRIVATE.
+          # If public: remove the line below entirely.
+          # Add GH_PAT secret in repo Settings → Secrets → Actions
+          # token: ${{ secrets.GH_PAT }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -54,6 +57,7 @@ jobs:
       - name: Run job harbor
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.5-flash' }}
         run: |
           LLM_FLAG=""
           if [ "${{ inputs.llm }}" != "none" ]; then

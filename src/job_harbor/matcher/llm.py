@@ -17,7 +17,7 @@ except ImportError:
     HAS_GEMINI = False
 
 
-GEMINI_MODEL = "gemini-2.0-flash-lite"
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 class LLMMatcher:
@@ -89,7 +89,7 @@ Devuelve SOLO un JSON válido en este formato (sin markdown, sin explicación ad
         try:
             import requests
             base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-            model = os.environ.get("OLLAMA_MODEL", "gemma3:2b")
+            model = os.environ.get("OLLAMA_MODEL", "phi4-mini")
             response = requests.post(
                 f"{base_url}/api/generate",
                 json={"model": model, "prompt": self._build_prompt(job), "stream": False},

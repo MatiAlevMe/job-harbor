@@ -49,16 +49,27 @@ cp .env.example .env
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GEMINI_API_KEY` | No* | API key for Gemini LLM matcher (get from [aistudio.google.com](https://aistudio.google.com/apikey)) |
+| `GEMINI_API_KEY` | No* | API key for Gemini LLM matcher ([get one free](https://aistudio.google.com/apikey)) |
+| `GEMINI_MODEL` | No | Gemini model name (default: `gemini-2.5-flash`) |
 | `GUIA_LABORAL_PATH` | No | Path to `guia-laboral` repo (default: `../guia-laboral`) |
 | `OLLAMA_BASE_URL` | No | Ollama endpoint (default: `http://localhost:11434`) |
-| `OLLAMA_MODEL` | No | Ollama model name for matching (optional alternative to Gemini) |
+| `OLLAMA_MODEL` | No | Ollama model name (default: `phi4-mini`) |
 
 *\*Required only if using LLM matcher (`--llm` flag)*
 
+## How the profile (CV) is loaded
+
+The tool reads your CV from the `guia-laboral` repo to extract your skills, experience, and preferences.
+
+**Local mode:** It looks for `../guia-laboral/cv/cv-es.adoc` (sibling directory). If both repos are inside `E:\repos\`, the relative path `../guia-laboral` resolves correctly. If the repo is elsewhere, set `GUIA_LABORAL_PATH` in `.env`.
+
+**GitHub Actions:** The workflow checks out `MatiAlevMe/guia-laboral` as a sibling directory. The repo must be **public** (recommended) or you must create a `GH_PAT` secret with repo access.
+
+**Fallback:** If no `guia-laboral` repo is found, a default profile is used with all your known skills.
+
 ## LLM Configuration
 
-### Option A: Gemini API (recommended)
+### Option A: Gemini API (online, free tier)
 
 1. Go to https://aistudio.google.com/apikey
 2. Click "Create API Key"
@@ -69,32 +80,53 @@ cp .env.example .env
 GEMINI_API_KEY=AIzaSy...
 ```
 
-Free tier: 60 requests per minute, more than enough for this use case.
+**Available free models (2026):**
+
+| Model | Status | Rate |
+|-------|--------|------|
+| `gemini-2.5-flash` | ✅ Free (default) | 10 RPM, 1,500 RPD |
+| `gemini-3-flash` | ✅ Free | 10 RPM, 1,500 RPD |
+| `gemini-3.1-flash-lite` | ✅ Free | 15 RPM, 1,000 RPD |
+
+Set your preferred model:
+
+```
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+> **Note:** `gemini-2.0-flash-lite` was deprecated and shut down on June 1, 2026. The code now uses `gemini-2.5-flash` by default.
 
 ### Option B: Ollama (local, fully offline)
 
-Install Ollama from https://ollama.com and pull a lightweight model:
+Use Ollama with a model you already have installed. Recommended for your system:
 
 ```bash
-# Recommended: small, fast, good for matching
-ollama pull gemma3:2b
-
-# Alternative: more capable but slower
-ollama pull llama3.2:3b
+# Already installed ✅
+ollama run phi4-mini
 ```
 
-Then configure `.env`:
+Configure `.env`:
 
 ```
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=gemma3:2b
+OLLAMA_MODEL=phi4-mini
 ```
 
-Use `--llm ollama` flag to use Ollama instead of Gemini.
+Run with:
+
+```bash
+python -m job_harbor run --llm ollama
+```
+
+Other models you have installed: `qwen3:1.7b` (lighter), `qwen3:8b` (better quality), `deepseek-r1:7b`.
 
 ### Option C: No LLM (keyword matching only)
 
 Just don't use the `--llm` flag. The keyword matcher (TF-IDF + cosine similarity) runs by default.
+
+```bash
+python -m job_harbor run
+```
 
 ## Profile Configuration
 
@@ -122,13 +154,14 @@ preferences:
 ## Running
 
 ```bash
-# Basic run (keyword matching only)
+# Basic run (keyword matching only, no LLM)
 python -m job_harbor run
 
-# Run with Gemini LLM matcher
+# Run with Gemini LLM matcher (default Gemini)
 python -m job_harbor run --llm
 
-# Run with local Ollama
+# Run with specific backend
+python -m job_harbor run --llm gemini
 python -m job_harbor run --llm ollama
 
 # Show all stored jobs
@@ -142,13 +175,45 @@ python -m job_harbor history
 
 The workflow runs automatically Mon-Fri at 9 AM Chile time.
 
-To enable the LLM matcher in CI:
+### Setup steps:
 
-1. Go to your repo → Settings → Secrets and variables → Actions
-2. Add `GEMINI_API_KEY` as a repository secret
-3. The workflow will use it automatically
+1. Make `guia-laboral` repo **public** (recommended) — no token needed for checkout.
+   - Or add `GH_PAT` as a repo secret if you want to keep it private.
+2. Go to your repo → Settings → Secrets and variables → Actions
+3. Add `GEMINI_API_KEY` as a repository secret (optional, needed only for LLM matching)
+4. Optionally add `GEMINI_MODEL` as a secret if you want a non-default model
 
-The database persists between runs using GitHub Actions cache. You can also manually trigger a run from the Actions tab.
+### Where do results go?
+
+| Output | Location | How to access |
+|--------|----------|---------------|
+| **Database** | GitHub Actions cache | Persists between runs automatically |
+| **Artifact** | Actions → Run → Artifacts | Download `job-results` (the `jobs.db` file) |
+| **Summary** | Actions → Run → Summary | Table of top 10 matches, visible in GitHub UI |
+| **Notifications** | ❌ Not included (v2) | Planned: Telegram/WhatsApp via OpenClaw |
+
+### Understanding job-match scores from GitHub Actions
+
+The Step Summary shows your top 10 matches as a markdown table:
+
+```
+## Job Harbor Results
+- [92%] BC Tecnología — QA Automation Engineer
+- [85%] Xepelin — Backend Engineer
+```
+
+Each workflow run also:
+- Caches the SQLite DB so duplicates aren't re-saved
+- Uploads the DB as an artifact for 30 days
+- Shows total offers found vs matched in the workflow logs
+
+## Post-MVP (Future)
+
+See `docs/PLAN.md` for the full roadmap. Planned improvements:
+
+- **v1.1** Streamlit UI (web dashboard) — already scaffolded as `app.py`
+- **v2.0** OpenClaw skill + Telegram/WhatsApp alerts
+- **v3.0** More sources (Kibernum, Globant, Accenture direct scraping; AngelList, WeWorkRemotely)
 
 ## Streamlit UI (v1.1, optional)
 
