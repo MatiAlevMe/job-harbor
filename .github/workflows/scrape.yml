@@ -1,0 +1,86 @@
+name: Daily Job Scrape
+
+on:
+  schedule:
+    # Lunes a viernes 9:00 AM Chile (UTC-4 → 13:00 UTC, UTC-3 → 12:00 UTC)
+    - cron: '0 13 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      llm:
+        description: 'Use LLM matcher (gemini/ollama/none)'
+        required: true
+        default: 'gemini'
+        type: choice
+        options:
+          - gemini
+          - none
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout guia-laboral (profile source)
+        uses: actions/checkout@v4
+        with:
+          repository: MatiAlevMe/guia-laboral
+          path: ../guia-laboral
+          token: ${{ secrets.GH_PAT || github.token }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          playwright install chromium
+          if [ "${{ inputs.llm }}" = "gemini" ]; then
+            pip install google-genai
+          fi
+
+      - name: Restore database cache
+        uses: actions/cache@v4
+        with:
+          path: jobs.db
+          key: jobs-db-${{ github.run_id }}
+          restore-keys: |
+            jobs-db-
+
+      - name: Run job harbor
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          LLM_FLAG=""
+          if [ "${{ inputs.llm }}" != "none" ]; then
+            LLM_FLAG="--llm ${{ inputs.llm }}"
+          fi
+          python -m job_harbor run $LLM_FLAG
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-results
+          path: jobs.db
+          retention-days: 30
+
+      - name: Create summary
+        run: |
+          echo "## Job Harbor Results" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import sqlite3
+          conn = sqlite3.connect('jobs.db')
+          rows = conn.execute(
+              'SELECT title, company, match_score FROM jobs WHERE match_score >= 50 ORDER BY match_score DESC LIMIT 10'
+          ).fetchall()
+          if rows:
+              for r in rows:
+                  print(f'- [{r[2]:.0f}%] {r[1]} — {r[0]}')
+          else:
+              print('No matches found above threshold.')
+          conn.close()
+          " >> $GITHUB_STEP_SUMMARY
