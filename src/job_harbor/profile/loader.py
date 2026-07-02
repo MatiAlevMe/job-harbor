@@ -13,6 +13,7 @@ def _find_repo_path() -> Optional[str]:
         return os.path.abspath(env_path)
 
     candidates = [
+        "guia-laboral",
         os.path.join("..", "guia-laboral"),
         os.path.join("..", "..", "guia-laboral"),
     ]
