@@ -1,4 +1,4 @@
-"""Google Jobs scraper using Playwright.
+"""Google Jobs scraper using Playwright (lazy import).
 
 Google Jobs aggregates listings from LinkedIn, Indeed, and many other sources,
 giving broad coverage with a single scraper.
@@ -9,10 +9,13 @@ import re
 import urllib.parse
 from typing import Optional
 
-from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
-
 from .base import Scraper
 from ..model import Job
+
+
+def _playwright():
+    from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
+    return sync_playwright, PWTimeout
 
 
 SEARCH_QUERIES = [
@@ -29,6 +32,11 @@ SEARCH_QUERIES = [
 
 class GoogleJobsScraper(Scraper):
     def scrape(self, query: Optional[str] = None, limit: int = 40) -> list[Job]:
+        try:
+            sync_playwright, _ = _playwright()
+        except ImportError:
+            return []
+
         queries = [query] if query else SEARCH_QUERIES
         all_jobs: dict[str, Job] = {}
 

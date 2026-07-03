@@ -38,10 +38,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e .
-          playwright install chromium
-          if [ "${{ inputs.llm }}" = "gemini" ]; then
-            pip install google-genai
-          fi
+          # Playwright Chromium is optional — GoogleJobs and GetOnBoard scrapers
+          # degrade gracefully when Playwright is unavailable. RemoteOK uses the
+          # JSON API directly and does not require Playwright.
+          playwright install chromium 2>/dev/null || true
 
       - name: Restore database cache
         uses: actions/cache@v4

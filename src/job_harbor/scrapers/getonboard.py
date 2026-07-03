@@ -1,13 +1,16 @@
-"""GetOnBoard scraper — Chilean tech job portal."""
+"""GetOnBoard scraper — Chilean tech job portal (Playwright, lazy import)."""
 
 import time
 import re
 from typing import Optional
 
-from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
-
 from .base import Scraper
 from ..model import Job
+
+
+def _playwright():
+    from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
+    return sync_playwright, PWTimeout
 
 
 GETONBOARD_URL = "https://www.getonbrd.com"
@@ -16,6 +19,11 @@ SEARCH_URL = f"{GETONBOARD_URL}/empleos/desarrollo-y-programacion"
 
 class GetOnBoardScraper(Scraper):
     def scrape(self, query: Optional[str] = None, limit: int = 30) -> list[Job]:
+        try:
+            sync_playwright, PWTimeout = _playwright()
+        except ImportError:
+            return []
+
         jobs: list[Job] = []
 
         with sync_playwright() as p:
