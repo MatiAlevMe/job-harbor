@@ -43,7 +43,7 @@ def _load_config() -> dict:
         }
     }
     if CONFIG_PATH.exists():
-        with open(CONFIG_PATH) as f:
+        with open(CONFIG_PATH, encoding="utf-8") as f:
             return {**defaults, **yaml.safe_load(f)}
     return defaults
 
@@ -56,7 +56,7 @@ def _save_default_config():
             "keywords": ["QA", "Automation", "Full Stack", "Backend", "Python", "Rails"],
         }
     }
-    with open(CONFIG_PATH, "w") as f:
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         yaml.dump(defaults, f, allow_unicode=True, sort_keys=False)
     console.print(f"[dim]Config created at {CONFIG_PATH}[/dim]")
 
