@@ -29,21 +29,61 @@ def _parse_adoc_field(text: str, key: str) -> str:
     return m.group(1).strip() if m else ""
 
 
+CORE_SKILLS = {
+    "Python", "Ruby on Rails", "Ruby", "JavaScript", "TypeScript", "Java",
+    "SQL", "React", "Next.js", "Node.js", "Angular", "Vue.js",
+    "PostgreSQL", "MySQL", "MongoDB", "SQLite", "NoSQL",
+    "AWS", "Azure", "GCP", "Docker", "Kubernetes", "CI/CD",
+    "Git", "GitHub", "GitLab", "Bitbucket",
+    "Selenium", "Cucumber", "Playwright", "Jenkins", "Maven",
+    "Postman", "SoapUI", "BrowserStack", "REST APIs", "GraphQL",
+    "Machine Learning", "Data Engineering", "ETL", "Pandas",
+    "Full Stack", "Backend", "Frontend", "QA Automation",
+    "Linux", "Bash", "Shell", "HTML", "CSS",
+    "Rails", "Flask", "Django", "FastAPI",
+    "Redis", "Kafka", "RabbitMQ", "Nginx",
+    "Terraform", "Ansible", "Puppet", "Chef",
+    "Prometheus", "Grafana", "Datadog",
+    "Jira", "Bootstrap", "Data Science", "DevOps",
+    "Chatbot", "API", "REST", "Excel", "Automation",
+    "Testing", "Unit Test", "API Testing",
+}
+
+CORE_SKILLS_LOWER = {s.lower(): s for s in CORE_SKILLS}
+
+def _strip_version(name: str) -> str:
+    name = re.sub(r'[ \t]*\d+\.\d+.*$', '', name)
+    name = re.sub(r'[ \t]*\d+.*$', '', name)
+    name = re.sub(r'\s*\([^)]*\)', '', name)
+    name = re.sub(r'\s*\+\s*$', '', name)
+    return name.strip()
+
 def _extract_skills(text: str) -> list[str]:
     skills = set()
     patterns = [
         r"_Stack(?: especializado)?_: (.+)",
         r"Stack: (.+)",
         r"\*Stack\*: (.+)",
+        r"\*Herramientas\*: (.+)",
     ]
     for p in patterns:
-        m = re.search(p, text, re.IGNORECASE)
-        if m:
+        for m in re.finditer(p, text, re.IGNORECASE):
             parts = re.split(r"[,;·|•]", m.group(1))
             for part in parts:
                 part = part.strip().rstrip(".")
+                part = _strip_version(part)
                 if part and len(part) > 1:
-                    skills.add(part)
+                    if part in CORE_SKILLS:
+                        skills.add(part)
+                        continue
+                    term_lower = part.lower()
+                    for core_lower, core_orig in CORE_SKILLS_LOWER.items():
+                        if core_lower in term_lower:
+                            skills.add(core_orig)
+                            break
+
+    if not skills:
+        return ["Python", "Ruby on Rails", "JavaScript", "SQL", "Selenium"]
     return sorted(skills)
 
 
@@ -68,7 +108,7 @@ def load_profile(cv_rel_path: Optional[str] = None) -> Profile:
             title="Ingeniero Civil Informático | Full Stack Engineer & QA Automation",
             skills=["Python", "Ruby on Rails", "JavaScript", "SQL", "Selenium",
                     "Cucumber", "Jenkins", "Git", "AWS", "Postman", "MySQL",
-                    "Playwright", "CI/CD", "GitOps"],
+                    "Playwright", "CI/CD", "TypeScript", "Java", "React"],
             experience_years=1.5,
             education="Ingeniero Civil Informático — PUCV (2025)",
             projects=["KineViz", "FireGuard", "MCP Server"],

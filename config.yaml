@@ -1,0 +1,14 @@
+preferences:
+  locations:
+  - Valparaíso
+  - Santiago
+  - Remoto Chile
+  - Remoto Mundial
+  min_match_score: 40
+  keywords:
+  - QA
+  - Automation
+  - Full Stack
+  - Backend
+  - Python
+  - Rails

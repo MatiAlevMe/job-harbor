@@ -12,7 +12,7 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.markdown import Markdown
 
-from .model import Profile
+from .model import Profile, Job
 from .profile import load_profile
 from .scrapers import GoogleJobsScraper, GetOnBoardScraper, RemoteOKScraper
 from .matcher import KeywordMatcher, LLMMatcher
@@ -38,7 +38,7 @@ def _load_config() -> dict:
     defaults = {
         "preferences": {
             "locations": ["Valparaíso", "Santiago", "Remoto Chile", "Remoto Mundial"],
-            "min_match_score": 50,
+            "min_match_score": 40,
             "keywords": ["QA", "Automation", "Full Stack", "Backend", "Python", "Rails"],
         }
     }
@@ -52,7 +52,7 @@ def _save_default_config():
     defaults = {
         "preferences": {
             "locations": ["Valparaíso", "Santiago", "Remoto Chile", "Remoto Mundial"],
-            "min_match_score": 50,
+            "min_match_score": 40,
             "keywords": ["QA", "Automation", "Full Stack", "Backend", "Python", "Rails"],
         }
     }
@@ -87,9 +87,9 @@ def cmd_run(llm: Optional[str] = None):
             status.update(f"[bold cyan]Scraping {scraper.name}...")
             jobs = scraper.scrape(limit=20)
             all_jobs.extend(jobs)
-            console.print(f"  [green]✓[/green] {scraper.name}: {len(jobs)} ofertas")
+            console.print(f"  [green]OK[/green] {scraper.name}: {len(jobs)} ofertas")
         except Exception as e:
-            console.print(f"  [red]✗[/red] {scraper.name}: {e}")
+            console.print(f"  [red]ERR[/red] {scraper.name}: {e}")
 
     console.print(f"\n[yellow]Total: {len(all_jobs)} ofertas encontradas[/yellow]")
 
@@ -141,7 +141,7 @@ def cmd_run(llm: Optional[str] = None):
 
         for i, job in enumerate(matched):
             score_color = "green" if job["match_score"] >= 70 else "yellow" if job["match_score"] >= 50 else "red"
-            emoji = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else "  "
+            emoji = "#1" if i == 0 else "#2" if i == 1 else "#3" if i == 2 else "  "
             table.add_row(
                 emoji,
                 job["title"][:38],
@@ -153,9 +153,9 @@ def cmd_run(llm: Optional[str] = None):
         console.print(table)
 
         for i, job in enumerate(matched[:5]):
-            console.print(f"\n[bold]{'🥇' if i==0 else '🥈' if i==1 else '🥉' if i==2 else '  '} "
-                         f"{job['title']}[/bold] — [cyan]{job['company']}[/cyan]")
-            console.print(f"   [link={job['url']}]→ {job['url']}[/link]")
+            console.print(f"\n[bold]{'#1' if i==0 else '#2' if i==1 else '#3' if i==2 else '  '} "
+                         f"{job['title']}[/bold] - [cyan]{job['company']}[/cyan]")
+            console.print(f"   [link={job['url']}]{job['url']}[/link]")
             if job["match_reason"]:
                 console.print(f"   [dim]{job['match_reason']}[/dim]")
     else:
@@ -211,7 +211,7 @@ def cmd_history():
             r["timestamp"][:19],
             str(r["total_jobs"]),
             str(r["matched_jobs"]),
-            "✓" if r["llm_used"] else "—",
+            "yes" if r["llm_used"] else "no",
         )
 
     console.print(table)

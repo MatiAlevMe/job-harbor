@@ -64,7 +64,8 @@ def save_job(job: Job) -> bool:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             job.title, job.company, job.location, int(job.remote),
-            job.url, job.description, job.requirements,
+            job.url, job.description,
+            "\n".join(job.requirements) if job.requirements else "",
             job.source, job.salary_range, job.posted_date,
             job.match_score, job.match_reason,
         ))
