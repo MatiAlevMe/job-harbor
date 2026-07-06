@@ -25,16 +25,35 @@ JUNIOR_RE = re.compile(r"\b(?:junior|jr\.?|trainee|entry|graduate|associate)\b",
 
 EXP_RE = re.compile(r"(\d+)\+?\s*(?:year|yr|año)s?\s*(?:of\s+)?(?:exp|experience)?", re.IGNORECASE)
 
-RESTRICTED_RE = re.compile(
+LOCATION_COUNTRY_RE = re.compile(
     r"\b(?:"
-    r"usa|u\.s\.a\.?|united states(?: of america)?|"
-    r"uk|u\.k\.|united kingdom|great britain|"
-    r"germany|deutschland|france|spain|italy|netherlands|holland|"
-    r"canada|australia|japan|singapore|"
-    r"switzerland|sweden|norway|denmark|finland|ireland|new\s+zealand|"
-    r"europe(?:an)?|eu\b|"
-    r"must\s+be\s+(?:located|based|resident)\s+in|"
-    r"work\s+authorization|citizenship\s+required|authorized\s+to\s+work"
+    # English / native names
+    r"usa|u\.s\.a\.?|united states(?: of america)?|estados unidos|"
+    r"uk|u\.k\.|united kingdom|great britain|reino unido|"
+    r"germany|deutschland|alemania|france|francia|spain|españa|italy|italia|"
+    r"netherlands|holland|"
+    r"portugal|belgium|austria|switzerland|sweden|norway|denmark|finland|"
+    r"ireland|poland|polonia|czech(?:ia| republic)?|hungary|romania|bulgaria|croatia|"
+    r"slovakia|slovenia|greece|turkey|turquía|ukraine|russia|rusia|luxembourg|"
+    r"malta|cyprus|iceland|"
+    r"canada|mexico|méxico|brazil|brasil|"
+    r"australia|japan|japón|singapore|india|china|south\s+korea|taiwan|"
+    r"vietnam|thailand|indonesia|philippines|malaysia|"
+    r"israel|uae|united\s+arab\s+emirates|saudi\s+arabia|qatar|"
+    r"new\s+zealand|"
+    r"south\s+africa|nigeria|kenya|egypt|egipto|morocco|marruecos"
+    r")\b", re.IGNORECASE
+)
+
+GEO_RESTRICTION_RE = re.compile(
+    r"\b(?:"
+    r"must\s+be\s+(?:located|based|resident|domiciled|living)\s+(?:in|within)|"
+    r"authorized\s+to\s+work|work\s+authorization|"
+    r"citizenship\s+required|permanent\s+resident|"
+    r"only\s+(?:for|in|from|open\s+to)\s+(?:residents|candidates|citizens|people|applicants)?|"
+    r"limited\s+to|restricted\s+to|"
+    r"requires\s+(?:being|living|working|residing)\s+(?:in|within)|"
+    r"not\s+(?:open\s+to|available\s+(?:for|to))\s+(?:international|candidates?\s+(?:from|outside))"
     r")\b", re.IGNORECASE
 )
 
@@ -104,9 +123,11 @@ class KeywordMatcher:
         is_remote_by_loc = bool(re.search(r"\b(?:remote|remoto|worldwide|anywhere)\b", job_location_lower))
         is_remote_any = job.remote or is_remote_by_loc
 
-        geo_restricted = bool(RESTRICTED_RE.search(job_location_lower))
+        geo_restricted = bool(LOCATION_COUNTRY_RE.search(job_location_lower))
         if not geo_restricted:
-            geo_restricted = bool(RESTRICTED_RE.search(combined_lower))
+            geo_restricted = bool(LOCATION_COUNTRY_RE.search(combined_lower))
+        if not geo_restricted:
+            geo_restricted = bool(GEO_RESTRICTION_RE.search(combined_lower))
 
         for loc in self.profile.locations:
             if loc == "Remoto Chile":
