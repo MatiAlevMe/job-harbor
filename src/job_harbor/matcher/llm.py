@@ -49,6 +49,10 @@ class LLMMatcher:
 - Descripción: {job.description[:2000]}
 
 ## Instrucciones
+- El candidato tiene {self.profile.experience_years} años de experiencia profesional. Penaliza fuertemente ofertas que requieran mucha más experiencia (Senior, Staff, Principal, Lead, 5+ años requeridos).
+- Penaliza ofertas cuya ubicación geográfica no sea accesible desde Chile (ej: requiere estar en USA, Europa, UK, o tener permiso de trabajo en otro país).
+- El candidato busca trabajo remoto mundial o presencial en Chile. Valora positivamente ofertas remotas sin restricción geográfica.
+
 Devuelve SOLO un JSON válido en este formato (sin markdown, sin explicación adicional):
 {{
   "score": <0-100>,
