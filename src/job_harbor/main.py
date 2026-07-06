@@ -14,7 +14,7 @@ from rich.markdown import Markdown
 
 from .model import Profile, Job
 from .profile import load_profile
-from .scrapers import RemoteOKScraper, HimalayasScraper, RemotiveScraper, GetOnBoardScraper, VacantesDigitalesScraper
+from .scrapers import RemoteOKScraper, HimalayasScraper, RemotiveScraper, GetOnBoardScraper, VacantesDigitalesScraper, JoobleScraper
 from .matcher import KeywordMatcher, LLMMatcher
 from . import db
 
@@ -81,6 +81,7 @@ def cmd_run(llm: Optional[str] = None):
         RemotiveScraper(),
         GetOnBoardScraper(),
         VacantesDigitalesScraper(),
+        JoobleScraper(),
     ]
 
     all_jobs = []

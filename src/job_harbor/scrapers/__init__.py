@@ -4,6 +4,7 @@ from .himalayas import HimalayasScraper
 from .remotive import RemotiveScraper
 from .getonboard import GetOnBoardScraper
 from .vacantes_digitales import VacantesDigitalesScraper
+from .jooble import JoobleScraper
 
 __all__ = [
     "Scraper",
@@ -12,4 +13,5 @@ __all__ = [
     "RemotiveScraper",
     "GetOnBoardScraper",
     "VacantesDigitalesScraper",
+    "JoobleScraper",
 ]

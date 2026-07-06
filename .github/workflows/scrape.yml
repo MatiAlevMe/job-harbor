@@ -51,6 +51,7 @@ jobs:
           GUIA_LABORAL_PATH: ${{ github.workspace }}/guia-laboral
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.5-flash' }}
+          JOOBLE_API_KEY: ${{ secrets.JOOBLE_API_KEY }}
         run: |
           LLM_FLAG=""
           if [ "${{ inputs.llm }}" != "none" ]; then
