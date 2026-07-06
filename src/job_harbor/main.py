@@ -38,7 +38,7 @@ def _load_config() -> dict:
     defaults = {
         "preferences": {
             "locations": ["Valparaíso", "Santiago", "Remoto Chile", "Remoto Mundial"],
-            "min_match_score": 40,
+            "min_match_score": 35,
             "keywords": ["QA", "Automation", "Full Stack", "Backend", "Python", "Rails"],
         }
     }
@@ -52,7 +52,7 @@ def _save_default_config():
     defaults = {
         "preferences": {
             "locations": ["Valparaíso", "Santiago", "Remoto Chile", "Remoto Mundial"],
-            "min_match_score": 40,
+            "min_match_score": 35,
             "keywords": ["QA", "Automation", "Full Stack", "Backend", "Python", "Rails"],
         }
     }
@@ -116,7 +116,7 @@ def cmd_run(llm: Optional[str] = None):
         try:
             llm_matcher = LLMMatcher(profile, backend=llm)
             matched = db.get_matched_jobs(min_score=30)
-            for row in matched[:10]:
+            for row in matched[:30]:
                 job = Job(
                     title=row["title"],
                     company=row["company"],

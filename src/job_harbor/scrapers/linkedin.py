@@ -7,6 +7,8 @@ fetches individual job detail pages for the full description.
 
 from typing import Optional
 
+import time
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -15,6 +17,9 @@ from ..model import Job
 
 
 SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
+
+MAX_DETAIL_FETCHES = 25
+DETAIL_DELAY = 0.5
 
 QUERIES = [
     ("developer", "Chile"),
@@ -64,7 +69,54 @@ class LinkedInScraper(Scraper):
             except Exception:
                 continue
 
+        self._enrich_descriptions(jobs)
         return jobs[:limit]
+
+    def _enrich_descriptions(self, jobs: list[Job]) -> None:
+        """Fetch full descriptions from detail pages for better skill matching.
+
+        LinkedIn search cards only expose title/company/location, so we
+        fetch up to MAX_DETAIL_FETCHES detail pages to populate the
+        description field used by the keyword matcher.
+        """
+        fetched = 0
+        for job in jobs:
+            if fetched >= MAX_DETAIL_FETCHES:
+                break
+            if job.description and len(job.description) > 200:
+                continue
+            desc = self._fetch_description(job.url)
+            if desc:
+                job.description = desc[:3000]
+                fetched += 1
+            time.sleep(DETAIL_DELAY)
+
+    def _fetch_description(self, url: str) -> Optional[str]:
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=20)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+
+            # LinkedIn detail pages embed the real description in these
+            # elements (most specific first)
+            desc_el = soup.select_one(
+                "div.show-more-less-html__markup, div.description__text, "
+                "section.description, div.description"
+            )
+            if desc_el:
+                text = desc_el.get_text(separator=" ", strip=True)
+                if len(text) > 100:
+                    return text
+
+            # Fallback: main content section
+            main = soup.select_one("article, .jobs-details")
+            if main:
+                text = main.get_text(separator=" ", strip=True)
+                if len(text) > 100:
+                    return text
+        except Exception:
+            pass
+        return None
 
     def _search(self, query: str, location: str, limit: int) -> list[Job]:
         jobs: list[Job] = []
