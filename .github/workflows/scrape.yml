@@ -36,12 +36,7 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
-        run: |
-          pip install -e .
-          # Playwright Chromium is optional — GoogleJobs and GetOnBoard scrapers
-          # degrade gracefully when Playwright is unavailable. RemoteOK uses the
-          # JSON API directly and does not require Playwright.
-          playwright install chromium 2>/dev/null || true
+        run: pip install -e .
 
       - name: Restore database cache
         uses: actions/cache@v4

@@ -1,105 +1,122 @@
-"""GetOnBoard scraper — Chilean tech job portal (Playwright, lazy import)."""
+"""GetOnBoard scraper — uses the public RSS feed (no Playwright, no auth)."""
 
-import time
 import re
+import xml.etree.ElementTree as ET
 from typing import Optional
+
+import requests
 
 from .base import Scraper
 from ..model import Job
 
 
-def _playwright():
-    from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
-    return sync_playwright, PWTimeout
+RSS_URL = "https://www.getonbrd.com/jobs/feed"
 
+TECH_CATEGORIES = {
+    "Programming",
+    "Data Science / Analytics",
+    "DevOps / Sysadmin",
+    "Quality Assurance (QA)",
+    "UX / UI",
+    "Product Management",
+    "Project Management",
+    "Mobile",
+    "Security",
+    "Machine Learning",
+}
 
-GETONBOARD_URL = "https://www.getonbrd.com"
-SEARCH_URL = f"{GETONBOARD_URL}/empleos/desarrollo-y-programacion"
+NON_TECH_CATEGORIES = {
+    "Marketing",
+    "Sales",
+    "Administration",
+    "Finance",
+    "Human Resources",
+    "Customer Support",
+    "Legal",
+    "Design / Creative",
+    "Content / Writing",
+}
 
 
 class GetOnBoardScraper(Scraper):
-    def scrape(self, query: Optional[str] = None, limit: int = 30) -> list[Job]:
-        try:
-            sync_playwright, PWTimeout = _playwright()
-        except ImportError:
-            return []
-
+    def scrape(self, query: Optional[str] = None, limit: int = 20) -> list[Job]:
         jobs: list[Job] = []
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=self.headless)
-            context = browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/131.0.0.0 Safari/537.36"
-                ),
-                locale="es-CL",
+        try:
+            resp = requests.get(
+                RSS_URL,
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/131.0.0.0 Safari/537.36"
+                    ),
+                },
+                timeout=20,
             )
-            page = context.new_page()
+            resp.raise_for_status()
 
-            try:
-                url = SEARCH_URL
-                if query:
-                    url += f"?q={query.replace(' ', '%20')}"
-                page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                time.sleep(3)
+            root = ET.fromstring(resp.content)
+            for job_elem in root.findall("job"):
+                if len(jobs) >= limit:
+                    break
+                job = self._parse_job(job_elem)
+                if job:
+                    jobs.append(job)
 
-                cards = page.locator('[data-company], article, [class*="job"], [class*="card"]').all()
-                if not cards:
-                    cards = page.locator("a[href*='/empleos/']").all()
-
-                seen_urls = set()
-                for card in cards[:limit]:
-                    try:
-                        link = card
-                        href = ""
-                        tag = link.tag_name
-                        if tag != "a":
-                            link = card.locator("a[href*='/empleos/']").first
-                            href = link.get_attribute("href") or ""
-                        else:
-                            href = link.get_attribute("href") or ""
-
-                        if not href or href in seen_urls:
-                            continue
-                        full_url = href if href.startswith("http") else f"{GETONBOARD_URL}{href}"
-                        seen_urls.add(full_url)
-
-                        title = link.text_content(timeout=2000) or ""
-                        if not title or len(title) < 5:
-                            continue
-
-                        body = card.text_content(timeout=2000) or ""
-                        lines = [l.strip() for l in body.split("\n") if l.strip()]
-
-                        company = ""
-                        location = ""
-                        for l in lines:
-                            if l != title and len(l) > 2 and not company:
-                                company = l
-                            if "remoto" in l.lower() or "santiago" in l.lower() or "chile" in l.lower():
-                                location = location or l
-
-                        remote = "remoto" in body.lower()
-
-                        jobs.append(Job(
-                            title=title.strip(),
-                            company=company.strip() or "Sin especificar",
-                            location=location.strip() or "Chile",
-                            remote=remote,
-                            url=full_url,
-                            description=body.strip(),
-                            source="getonboard",
-                        ))
-                    except Exception:
-                        continue
-
-            except PWTimeout:
-                pass
-            except Exception:
-                pass
-            finally:
-                browser.close()
+        except Exception:
+            pass
 
         return jobs
+
+    def _parse_job(self, elem: ET.Element) -> Optional[Job]:
+        def get(tag: str) -> str:
+            el = elem.find(tag)
+            return (el.text or "").strip() if el is not None else ""
+
+        title = get("title")
+        company = get("company")
+        url = get("url")
+        category = get("category")
+        experience = get("experience")
+        country = get("country")
+        salary_text = get("salary")
+        jobtype = get("jobtype") or get("working_hours") or ""
+        description_raw = get("description")
+
+        if not title or not url or not company:
+            return None
+
+        if category in NON_TECH_CATEGORIES:
+            return None
+
+        if category not in TECH_CATEGORIES:
+            title_lower = title.lower()
+            tech_words = [
+                "engineer", "developer", "programmer", "software",
+                "full stack", "backend", "frontend", "devops",
+                "data", "qa", "test", "automation", "python",
+                "java", "javascript", "ruby", "rails", "react",
+                "node", "cloud", "ml", "ai", "machine learning",
+            ]
+            if not any(w in title_lower for w in tech_words):
+                return None
+
+        location = country or "Chile"
+        remote = "remoto" in title.lower() or "remote" in title.lower()
+        if not remote:
+            location_lower = (location + " " + title).lower()
+            remote = ("remoto" in location_lower or "remote" in location_lower)
+
+        combined_desc = f"{title} {company} {category} {experience} {description_raw}".strip()
+
+        return Job(
+            title=title,
+            company=company,
+            location=location,
+            remote=remote,
+            url=url,
+            description=combined_desc[:3000],
+            source="getonboard",
+            salary_range=salary_text,
+        )

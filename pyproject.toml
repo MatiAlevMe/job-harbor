@@ -8,15 +8,10 @@ version = "0.1.0"
 description = "Job matcher that finds the best opportunities for your profile"
 requires-python = ">=3.12"
 dependencies = [
-    "playwright>=1.50",
-    "beautifulsoup4>=4.13",
     "requests>=2.32",
-    "scikit-learn>=1.6",
-    "python-dotenv>=1.1",
     "pyyaml>=6.0",
     "google-genai>=1.14",
     "rich>=13.9",
-    "iniconfig>=2.1",
 ]
 
 [project.scripts]

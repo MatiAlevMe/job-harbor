@@ -14,7 +14,7 @@ from rich.markdown import Markdown
 
 from .model import Profile, Job
 from .profile import load_profile
-from .scrapers import GoogleJobsScraper, GetOnBoardScraper, RemoteOKScraper
+from .scrapers import RemoteOKScraper, HimalayasScraper, RemotiveScraper, GetOnBoardScraper, VacantesDigitalesScraper
 from .matcher import KeywordMatcher, LLMMatcher
 from . import db
 
@@ -76,9 +76,11 @@ def cmd_run(llm: Optional[str] = None):
 
     status.update("[bold cyan]Scraping jobs...")
     scrapers = [
-        GoogleJobsScraper(),
-        GetOnBoardScraper(),
         RemoteOKScraper(),
+        HimalayasScraper(),
+        RemotiveScraper(),
+        GetOnBoardScraper(),
+        VacantesDigitalesScraper(),
     ]
 
     all_jobs = []
