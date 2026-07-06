@@ -172,11 +172,18 @@ def load_profile(cv_rel_path: Optional[str] = None) -> Profile:
     cv_path = cv_rel_path or os.path.join(repo_path, "cv", "cv-es.adoc")
     resume_path = os.path.join(repo_path, "resume", "resume-es.adoc")
 
+    # Read both for structured field parsing (skills, title, projects, etc.)
     text = ""
     for p in [cv_path, resume_path]:
         if os.path.isfile(p):
             with open(p, "r", encoding="utf-8") as f:
                 text += f.read() + "\n"
+
+    # For LLM context, use only the resume — concise, complete, curated
+    raw_text = ""
+    if os.path.isfile(resume_path):
+        with open(resume_path, "r", encoding="utf-8") as f:
+            raw_text = f.read()
 
     name = _parse_adoc_field(text, "Name") or "Matías Vizancio Alevropulos Erlbaun"
 
@@ -209,5 +216,5 @@ def load_profile(cv_rel_path: Optional[str] = None) -> Profile:
         preferred_roles=["QA Automation", "Full Stack", "Backend"],
         locations=["Valparaíso", "Santiago", "Remoto Chile", "Remoto Mundial"],
         languages=["Spanish", "English C2"],
-        raw_text=text,
+        raw_text=raw_text,
     )

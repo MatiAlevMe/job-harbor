@@ -46,14 +46,42 @@ class KeywordMatcher:
                 break
 
         location_ok = False
+        job_location_lower = (job.location or "").lower()
+        combined_lower = f"{job.title} {job.company} {job.description}".lower()
+
+        # Detect if job is remote based on location field + flag
+        is_remote_by_loc = bool(re.search(r"\b(?:remote|remoto|worldwide|anywhere)\b", job_location_lower))
+        is_remote_any = job.remote or is_remote_by_loc
+
+        # Geo-restriction patterns — countries/regions that exclude Chile
+        RESTRICTED_RE = re.compile(
+            r"\b(?:"
+            r"usa|u\.s\.a\.?|united states(?: of america)?|"
+            r"uk|u\.k\.|united kingdom|"
+            r"germany|deutschland|france|spain|italy|netherlands|holland|"
+            r"canada|australia|japan|singapore|"
+            r"europe(?:an)?|eu\b"
+            r")\b", re.IGNORECASE
+        )
+        geo_restricted = bool(RESTRICTED_RE.search(job_location_lower))
+        if not geo_restricted:
+            geo_restricted = bool(RESTRICTED_RE.search(combined_lower))
+
         for loc in self.profile.locations:
             if loc == "Remoto Chile":
-                if re.search(r"remoto", job_text) and re.search(r"chile", job_text):
+                if (is_remote_any and re.search(r"\bchile\b", job_location_lower, re.IGNORECASE)):
+                    location_ok = True
+                    break
+                if re.search(r"\bremoto\b", combined_lower) and re.search(r"\bchile\b", combined_lower):
+                    location_ok = True
+                    break
+            elif loc == "Remoto Mundial":
+                if is_remote_any:
                     location_ok = True
                     break
             else:
                 pattern = _word_boundary(loc.lower())
-                if re.search(pattern, job_text):
+                if re.search(pattern, combined_lower):
                     location_ok = True
                     break
 
@@ -66,7 +94,7 @@ class KeywordMatcher:
             skill_score = round(15 + 25 * min(1.0, matched_count / half))
 
         role_score = 25 if role_match else 0
-        location_score = 15 if location_ok else 0
+        location_score = 5 if (location_ok and geo_restricted) else (15 if location_ok else 0)
 
         title_keywords_score = 0
         job_title_lower = job.title.lower()
@@ -87,7 +115,7 @@ class KeywordMatcher:
             reason_parts.append(f"Skills: {', '.join(skills_found[:5])}")
             reason_parts.append(f"Match: {matched_count}/{total_skills}")
         if location_ok:
-            reason_parts.append("Location OK")
+            reason_parts.append("Location OK" if not geo_restricted else "Location OK (restringido)")
         if role_match:
             reason_parts.append("Rol coincide")
         reason = " | ".join(reason_parts) if reason_parts else "General match"

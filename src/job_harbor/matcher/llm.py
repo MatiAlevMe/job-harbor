@@ -38,7 +38,7 @@ class LLMMatcher:
 - Ubicaciones preferidas: {', '.join(self.profile.locations)}
 - Roles preferidos: {', '.join(self.profile.preferred_roles)}
 
-## Experiencia completa del candidato (CV y Resume)
+## Experiencia completa del candidato (Resume)
 {raw}
 
 ## Oferta
