@@ -1,4 +1,17 @@
-name: Daily Job Scrape
+name: Daily Job Scrape (PRIVATE)
+
+# ⚠️  Este workflow NO debe vivir en el repo público.
+#    Cópialo a un repo PRIVADO (ej: job-harbor-scraper) para que el
+#    daily scrape y los resultados NO sean visibles públicamente.
+#
+#    Pasos manuales en GitHub:
+#    1. Crear repo privado (ej: MatiAlevMe/job-harbor-scraper)
+#    2. Subir este archivo a .github/workflows/scrape.yml en el repo PRIVADO
+#    3. Settings > Secrets and variables > Actions > agregar:
+#         - GEMINI_API_KEY   (de https://aistudio.google.com/apikey)
+#         - JOOBLE_API_KEY    (de https://jooble.org/api/about)
+#         - GH_PAT           (token con solo public_repo o repo scope)
+#    4. El cron se hereda de aquí (Lun-Vie 9:00 AM Chile)
 
 on:
   schedule:
@@ -7,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       llm:
-        description: 'Use LLM matcher (gemini/ollama/none)'
+        description: 'Use LLM matcher (gemini/none)'
         required: true
         default: 'gemini'
         type: choice
@@ -20,9 +33,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout job-harbor (código público)
+        uses: actions/checkout@v4
+        with:
+          repository: MatiAlevMe/job-harbor
+          path: job-harbor
 
-      - name: Checkout guia-laboral (profile source)
+      - name: Checkout guia-laboral (perfil)
         uses: actions/checkout@v4
         with:
           repository: MatiAlevMe/guia-laboral
@@ -36,17 +53,19 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
+        working-directory: job-harbor
         run: pip install -e .
 
       - name: Restore database cache
         uses: actions/cache@v4
         with:
-          path: jobs.db
+          path: job-harbor/jobs.db
           key: jobs-db-${{ github.run_id }}
           restore-keys: |
             jobs-db-
 
       - name: Run job harbor
+        working-directory: job-harbor
         env:
           GUIA_LABORAL_PATH: ${{ github.workspace }}/guia-laboral
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -63,25 +82,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: job-results
-          path: jobs.db
+          path: job-harbor/jobs.db
           retention-days: 30
-
-      - name: Create summary
-        run: |
-          echo "## Job Harbor Results" >> $GITHUB_STEP_SUMMARY
-          python -c "
-          import sqlite3
-          conn = sqlite3.connect('jobs.db')
-          rows = conn.execute(
-              'SELECT title, company, match_score, url FROM jobs WHERE match_score >= 40 ORDER BY match_score DESC LIMIT 15'
-          ).fetchall()
-          if rows:
-              for r in rows:
-                  title, company, score, url = r[0], r[1], r[2], r[3]
-                  print(f'- [{score:.0f}%] {company} — {title}')
-                  if url:
-                      print(f'  {url}')
-          else:
-              print('No matches found above threshold.')
-          conn.close()
-          " >> $GITHUB_STEP_SUMMARY
