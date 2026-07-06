@@ -122,6 +122,9 @@ def cmd_run(llm: Optional[str] = None):
                     location=row["location"],
                     url=row["url"],
                     description=row["description"] or "",
+                    source=row["source"] or "",
+                    salary_range=row["salary_range"],
+                    posted_date=row["posted_date"],
                 )
                 score, reason, sf, sg = llm_matcher.match(job)
                 db.update_job_score(row["url"], score, reason)

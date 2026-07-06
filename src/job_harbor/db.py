@@ -75,7 +75,7 @@ def save_job(job: Job) -> bool:
         conn.close()
 
 
-def update_job_score(url: str, score: float, reason: str = "", skill_matches: str = "", skill_gaps: str = ""):
+def update_job_score(url: str, score: float, reason: str = ""):
     conn = get_connection()
     try:
         conn.execute("""

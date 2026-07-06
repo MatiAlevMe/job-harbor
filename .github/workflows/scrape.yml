@@ -72,9 +72,9 @@ jobs:
           python -c "
           import sqlite3
           conn = sqlite3.connect('jobs.db')
-          rows = conn.execute(
-              'SELECT title, company, match_score, url FROM jobs WHERE match_score >= 30 ORDER BY match_score DESC LIMIT 15'
-          ).fetchall()
+rows = conn.execute(
+    'SELECT title, company, match_score, url FROM jobs WHERE match_score >= 40 ORDER BY match_score DESC LIMIT 15'
+).fetchall()
           if rows:
               for r in rows:
                   title, company, score, url = r[0], r[1], r[2], r[3]
