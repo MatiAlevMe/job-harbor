@@ -18,8 +18,8 @@ from ..model import Job
 
 SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 
-MAX_DETAIL_FETCHES = 25
-DETAIL_DELAY = 0.5
+MAX_DETAIL_FETCHES = 15
+DETAIL_DELAY = 1.0
 
 QUERIES = [
     ("developer", "Chile"),
@@ -92,30 +92,38 @@ class LinkedInScraper(Scraper):
             time.sleep(DETAIL_DELAY)
 
     def _fetch_description(self, url: str) -> Optional[str]:
-        try:
-            resp = requests.get(url, headers=HEADERS, timeout=20)
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "html.parser")
+        for attempt in range(3):
+            try:
+                resp = requests.get(url, headers=HEADERS, timeout=20)
+                if resp.status_code in (401, 403, 429):
+                    # Blocked / rate-limited — don't hammer, bail out
+                    return None
+                resp.raise_for_status()
+                soup = BeautifulSoup(resp.text, "html.parser")
 
-            # LinkedIn detail pages embed the real description in these
-            # elements (most specific first)
-            desc_el = soup.select_one(
-                "div.show-more-less-html__markup, div.description__text, "
-                "section.description, div.description"
-            )
-            if desc_el:
-                text = desc_el.get_text(separator=" ", strip=True)
-                if len(text) > 100:
-                    return text
+                # LinkedIn detail pages embed the real description in these
+                # elements (most specific first)
+                desc_el = soup.select_one(
+                    "div.show-more-less-html__markup, div.description__text, "
+                    "section.description, div.description"
+                )
+                if desc_el:
+                    text = desc_el.get_text(separator=" ", strip=True)
+                    if len(text) > 100:
+                        return text
 
-            # Fallback: main content section
-            main = soup.select_one("article, .jobs-details")
-            if main:
-                text = main.get_text(separator=" ", strip=True)
-                if len(text) > 100:
-                    return text
-        except Exception:
-            pass
+                # Fallback: main content section
+                main = soup.select_one("article, .jobs-details")
+                if main:
+                    text = main.get_text(separator=" ", strip=True)
+                    if len(text) > 100:
+                        return text
+                return None
+            except Exception:
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+                    continue
+                return None
         return None
 
     def _search(self, query: str, location: str, limit: int) -> list[Job]:

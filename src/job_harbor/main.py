@@ -38,7 +38,7 @@ def _load_config() -> dict:
     defaults = {
         "preferences": {
             "locations": ["Valparaíso", "Santiago", "Remoto Chile", "Remoto Mundial"],
-            "min_match_score": 35,
+            "min_match_score": 30,
             "keywords": ["QA", "Automation", "Full Stack", "Backend", "Python", "Rails"],
         }
     }
@@ -52,7 +52,7 @@ def _save_default_config():
     defaults = {
         "preferences": {
             "locations": ["Valparaíso", "Santiago", "Remoto Chile", "Remoto Mundial"],
-            "min_match_score": 35,
+            "min_match_score": 30,
             "keywords": ["QA", "Automation", "Full Stack", "Backend", "Python", "Rails"],
         }
     }
@@ -102,14 +102,22 @@ def cmd_run(llm: Optional[str] = None):
 
     new_jobs = 0
     for job in all_jobs:
-        if db.save_job(job):
-            new_jobs += 1
+        is_new = db.save_job(job)
         score, reason, skills_found, skills_missing = kw_matcher.match(job)
         job.match_score = score
         job.match_reason = reason
         job.skill_matches = skills_found
         job.skill_gaps = skills_missing
-        db.update_job_score(job.url, score, reason)
+        # Only overwrite a stored score when we have a substantial
+        # description. Thin descriptions (e.g. LinkedIn detail fetch
+        # blocked/rate-limited) would otherwise collapse a previously
+        # good score from a restored cache DB.
+        if is_new or (job.description and len(job.description) > 200):
+            db.update_job_score(job.url, score, reason)
+        else:
+            console.print(
+                f"  [dim]skip re-score (thin desc): {job.title[:40]}[/dim]"
+            )
 
     if llm:
         status.update("[bold cyan]Running LLM matcher...")
