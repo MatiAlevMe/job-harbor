@@ -26,9 +26,11 @@ class LLMMatcher:
         self.backend = backend
 
     def _build_prompt(self, job: Job) -> str:
+        raw = self.profile.raw_text
+        raw = raw[:3000] if raw else ""
         return f"""Eres un reclutador experto evaluando qué tan bien calza una oferta con un perfil.
 
-## Perfil del candidato
+## Perfil estructurado del candidato
 - Rol: {self.profile.title}
 - Skills: {', '.join(self.profile.skills)}
 - Años de experiencia: {self.profile.experience_years}
@@ -36,12 +38,15 @@ class LLMMatcher:
 - Ubicaciones preferidas: {', '.join(self.profile.locations)}
 - Roles preferidos: {', '.join(self.profile.preferred_roles)}
 
+## Experiencia completa del candidato (CV y Resume)
+{raw}
+
 ## Oferta
 - Título: {job.title}
 - Empresa: {job.company}
 - Ubicación: {job.location}
 - Remoto: {job.remote}
-- Descripción: {job.description[:1500]}
+- Descripción: {job.description[:2000]}
 
 ## Instrucciones
 Devuelve SOLO un JSON válido en este formato (sin markdown, sin explicación adicional):

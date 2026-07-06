@@ -13,6 +13,7 @@ class Profile:
     preferred_roles: list[str] = field(default_factory=list)
     locations: list[str] = field(default_factory=list)
     languages: list[str] = field(default_factory=list)
+    raw_text: str = ""
 
 
 @dataclass

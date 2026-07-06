@@ -1,8 +1,13 @@
-"""Keyword-based matcher."""
+"""Keyword-based matcher with word-boundary matching and continuous scoring."""
 
+import re
 from typing import Optional
 
 from ..model import Profile, Job
+
+
+def _word_boundary(term: str) -> str:
+    return r"(?<![a-záéíóúñ])" + re.escape(term) + r"(?![a-záéíóúñ])"
 
 
 class KeywordMatcher:
@@ -18,50 +23,61 @@ class KeywordMatcher:
 
         for skill in self.profile.skills:
             skill_lower = skill.lower()
-            if skill_lower in job_text or skill_lower in reqs_text:
+            pattern = _word_boundary(skill_lower)
+            if re.search(pattern, job_text) or re.search(pattern, reqs_text):
                 skills_found.append(skill)
             else:
                 skills_missing.append(skill)
 
-        title_words = self.profile.title.lower().split()
-        role_match = any(w in job_text for w in title_words if len(w) > 3)
+        role_keywords = set()
+        for w in self.profile.title.lower().split():
+            if len(w) > 3:
+                role_keywords.add(w)
+        for r in self.profile.preferred_roles:
+            for w in r.lower().split():
+                if len(w) > 2:
+                    role_keywords.add(w)
 
-        pref_role_match = any(
-            role.lower() in job_text for role in self.profile.preferred_roles
-        )
+        role_match = False
+        for kw in role_keywords:
+            pattern = _word_boundary(kw)
+            if re.search(pattern, job_text):
+                role_match = True
+                break
 
-        location_ok = any(
-            loc.lower() in job_text or (
-                loc == "Remoto Chile" and ("remoto" in job_text and "chile" in job_text)
-            )
-            for loc in self.profile.locations
-        )
+        location_ok = False
+        for loc in self.profile.locations:
+            if loc == "Remoto Chile":
+                if re.search(r"remoto", job_text) and re.search(r"chile", job_text):
+                    location_ok = True
+                    break
+            else:
+                pattern = _word_boundary(loc.lower())
+                if re.search(pattern, job_text):
+                    location_ok = True
+                    break
 
         total_skills = len(self.profile.skills)
         matched_count = len(skills_found)
-        if total_skills == 0:
+        if total_skills == 0 or matched_count == 0:
             skill_score = 0
-        elif matched_count >= total_skills * 0.5:
-            skill_score = 40
-        elif matched_count >= total_skills * 0.3:
-            skill_score = 30
-        elif matched_count >= total_skills * 0.15:
-            skill_score = 20
-        elif matched_count > 0:
-            skill_score = 15
         else:
-            skill_score = 0
+            half = max(1, round(total_skills * 0.5))
+            skill_score = round(15 + 25 * min(1.0, matched_count / half))
 
-        role_score = 25 if role_match or pref_role_match else 0
+        role_score = 25 if role_match else 0
         location_score = 15 if location_ok else 0
 
         title_keywords_score = 0
         job_title_lower = job.title.lower()
-        profile_roles_lower = [r.lower() for r in self.profile.preferred_roles]
-        for role in profile_roles_lower:
-            role_words = role.split()
-            if any(w in job_title_lower for w in role_words if len(w) > 2):
-                title_keywords_score = 10
+        for role in self.profile.preferred_roles:
+            for w in role.lower().split():
+                if len(w) > 2:
+                    pattern = _word_boundary(w)
+                    if re.search(pattern, job_title_lower):
+                        title_keywords_score = 10
+                        break
+            if title_keywords_score:
                 break
 
         total_score = min(100, round(skill_score + role_score + location_score + title_keywords_score))
@@ -72,7 +88,7 @@ class KeywordMatcher:
             reason_parts.append(f"Match: {matched_count}/{total_skills}")
         if location_ok:
             reason_parts.append("Location OK")
-        if role_match or pref_role_match:
+        if role_match:
             reason_parts.append("Rol coincide")
         reason = " | ".join(reason_parts) if reason_parts else "General match"
 

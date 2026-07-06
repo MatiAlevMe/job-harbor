@@ -47,9 +47,44 @@ CORE_SKILLS = {
     "Jira", "Bootstrap", "Data Science", "DevOps",
     "Chatbot", "API", "REST", "Excel", "Automation",
     "Testing", "Unit Test", "API Testing",
+    ## Expansión desde el CV
+    "OpenLayers", "Chart.js", "Leaflet.js", "Vite", "PWA",
+    "Service Workers", "IndexedDB", "NASA FIRMS", "Open-Meteo",
+    "MCP", "Vercel AI", "Zavu API", "Faces.app AI",
+    "RAG", "Gemini API", "Ollama", "GHG Protocol",
+    "pandas", "scipy", "spm1d", "plotly", "matplotlib",
+    "Tkinter", "PyInstaller", "LaTeX", "PL/pgSQL",
+    "Google Cloud Translate", "Mobility", "i18n",
+    "FOCUS FinOps", "SPSS", "PySpark", "Airflow",
+    "MVP", "DDD", "POO", "SOLID",
+    "SCRUM", "Kanban", "Agile", "GitOps",
+    "CDN", "ORM", "API REST", "OAuth", "JWT",
+    "npm", "yarn", "webpack", "Babel", "ESLint",
+    "Figma", "Adobe XD", "Photoshop", "Illustrator",
+    "Notion", "Confluence", "Slack", "Discord",
+    "Stripe", "PayPal", "Mercado Pago",
+    "iOS", "Android", "React Native", "Flutter",
+    "WebSockets", "SSE", "gRPC",
+    "Deep Learning", "NLP", "Computer Vision", "TensorFlow", "PyTorch",
+    "Scikit-learn", "XGBoost", "LightGBM",
+    "Tableau", "Power BI", "Looker",
+    "SAP", "Salesforce", "HubSpot",
+    "Google Analytics", "Google Tag Manager", "SEO", "SEM",
+    "C", "C++", "C#", ".NET", "Go", "Rust", "PHP", "Scala", "Kotlin", "Swift",
+    "R", "MATLAB", "Julia",
+    "Hadoop", "Spark", "Kafka", "Flink",
+    "Snowflake", "BigQuery", "Redshift",
+    "CloudFormation", "CDK", "Pulumi",
+    "Vagrant", "VirtualBox", "VMware",
 }
 
 CORE_SKILLS_LOWER = {s.lower(): s for s in CORE_SKILLS}
+
+TECH_KEYWORDS = {
+    "js", "ts", "py", "rb", "go", "rs", "vue",
+    "api", "sdk", "cli", "ui", "ux", "db", "sql",
+    "npm", "yarn", "pip", "gem", "cargo",
+}
 
 def _strip_version(name: str) -> str:
     name = re.sub(r'[ \t]*\d+\.\d+.*$', '', name)
@@ -57,6 +92,19 @@ def _strip_version(name: str) -> str:
     name = re.sub(r'\s*\([^)]*\)', '', name)
     name = re.sub(r'\s*\+\s*$', '', name)
     return name.strip()
+
+def _looks_like_tech(term: str) -> bool:
+    if not term or len(term) <= 1:
+        return False
+    if re.match(r'^[A-Z][a-z]', term):
+        return True
+    if re.match(r'^[A-Z]{2,}', term):
+        return True
+    if '.' in term and not term.endswith('.'):
+        return True
+    if term.lower() in TECH_KEYWORDS:
+        return True
+    return False
 
 def _extract_skills(text: str) -> list[str]:
     skills = set()
@@ -77,10 +125,14 @@ def _extract_skills(text: str) -> list[str]:
                         skills.add(part)
                         continue
                     term_lower = part.lower()
+                    matched = False
                     for core_lower, core_orig in CORE_SKILLS_LOWER.items():
-                        if core_lower in term_lower:
+                        if core_lower in term_lower or term_lower in core_lower:
                             skills.add(core_orig)
+                            matched = True
                             break
+                    if not matched and _looks_like_tech(part):
+                        skills.add(part)
 
     if not skills:
         return ["Python", "Ruby on Rails", "JavaScript", "SQL", "Selenium"]
@@ -157,4 +209,5 @@ def load_profile(cv_rel_path: Optional[str] = None) -> Profile:
         preferred_roles=["QA Automation", "Full Stack", "Backend"],
         locations=["Valparaíso", "Santiago", "Remoto Chile", "Remoto Mundial"],
         languages=["Spanish", "English C2"],
+        raw_text=text,
     )
