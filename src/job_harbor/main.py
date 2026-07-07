@@ -1,5 +1,6 @@
 """Job Harbor CLI — main entrypoint."""
 
+import datetime
 import os
 import sys
 import argparse
@@ -157,20 +158,35 @@ def cmd_run(llm: Optional[str] = None):
     if matched:
         table = Table(box=None)
         table.add_column("", width=4)
-        table.add_column("Oferta", width=40)
+        table.add_column("Oferta", width=34)
         table.add_column("Score", justify="right", width=6)
-        table.add_column("Empresa", width=20)
-        table.add_column("Ubicación", width=18)
+        table.add_column("Empresa", width=18)
+        table.add_column("Salario", width=12)
+        table.add_column("Fecha", width=8)
+        table.add_column("Ubicación", width=16)
 
         for i, job in enumerate(matched):
             score_color = "green" if job["match_score"] >= 70 else "yellow" if job["match_score"] >= 50 else "red"
             emoji = "#1" if i == 0 else "#2" if i == 1 else "#3" if i == 2 else "  "
+            sal = (job["salary_range"] or "")[:10]
+            posted = job["posted_date"]
+            if posted:
+                try:
+                    dt = datetime.datetime.strptime(str(posted)[:10], "%Y-%m-%d")
+                    days = (datetime.datetime.now() - dt).days
+                    date_label = f"{days}d" if days >= 0 else posted[:5]
+                except Exception:
+                    date_label = str(posted)[:5]
+            else:
+                date_label = "-"
             table.add_row(
                 emoji,
-                job["title"][:38],
+                job["title"][:32],
                 f"[{score_color}]{job['match_score']:.0f}%[/{score_color}]",
-                job["company"][:18],
-                job["location"][:16],
+                job["company"][:16],
+                sal,
+                date_label,
+                job["location"][:14],
             )
 
         console.print(table)

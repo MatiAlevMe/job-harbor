@@ -78,3 +78,35 @@ jobs:
           name: job-results
           path: job-harbor/jobs.db
           retention-days: 30
+
+      - name: Create summary
+        working-directory: job-harbor
+        run: |
+          echo "## Job Harbor Results" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import sqlite3, datetime
+          conn = sqlite3.connect('jobs.db')
+          rows = conn.execute(
+              'SELECT title, company, match_score, url, salary_range, posted_date FROM jobs WHERE match_score >= 30 ORDER BY match_score DESC LIMIT 15'
+          ).fetchall()
+          if rows:
+              for r in rows:
+                  title, company, score, url, salary, posted = r[0], r[1], r[2], r[3], r[4], r[5]
+                  extras = []
+                  if salary:
+                      extras.append(f'S:{salary}')
+                  if posted:
+                      try:
+                          dt = datetime.datetime.strptime(str(posted)[:10], '%Y-%m-%d')
+                          days = (datetime.datetime.now() - dt).days
+                          extras.append(f'{days}d')
+                      except Exception:
+                          pass
+                  label = ' [' + ', '.join(extras) + ']' if extras else ''
+                  print(f'- [{score:.0f}%]{label} {company} — {title}')
+                  if url:
+                      print(f'  {url}')
+          else:
+              print('No matches found above threshold.')
+          conn.close()
+          " >> $GITHUB_STEP_SUMMARY

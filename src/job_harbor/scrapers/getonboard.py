@@ -108,6 +108,9 @@ class GetOnBoardScraper(Scraper):
             location_lower = (location + " " + title).lower()
             remote = ("remoto" in location_lower or "remote" in location_lower)
 
+        raw_date = get("pubdate") or get("date") or ""
+        posted_date = raw_date[:10] if raw_date else None
+
         combined_desc = f"{title} {company} {category} {experience} {description_raw}".strip()
 
         return Job(
@@ -119,4 +122,5 @@ class GetOnBoardScraper(Scraper):
             description=combined_desc[:3000],
             source="getonboard",
             salary_range=salary_text,
+            posted_date=posted_date,
         )

@@ -90,6 +90,9 @@ class RemotiveScraper(Scraper):
         tag_str = ", ".join(tags) if tags else ""
         combined_desc = f"{title} {company} {tag_str} {description}".strip()
 
+        raw_date = entry.get("publication_date", "") or ""
+        posted_date = raw_date[:10] if raw_date else None
+
         return Job(
             title=title,
             company=company or "Sin especificar",
@@ -100,4 +103,5 @@ class RemotiveScraper(Scraper):
             requirements=tag_str,
             source="remotive",
             salary_range=salary,
+            posted_date=posted_date,
         )

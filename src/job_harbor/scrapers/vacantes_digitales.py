@@ -100,6 +100,9 @@ class VacantesDigitalesScraper(Scraper):
 
         salary_str = str(salary) if salary else ""
 
+        raw_date = entry.get("published_at", entry.get("created_at", "")) or ""
+        posted_date = raw_date[:10] if raw_date else None
+
         return Job(
             title=title,
             company=company or "Sin especificar",
@@ -110,4 +113,5 @@ class VacantesDigitalesScraper(Scraper):
             requirements=skills_str,
             source="vacantesdigitales",
             salary_range=salary_str,
+            posted_date=posted_date,
         )

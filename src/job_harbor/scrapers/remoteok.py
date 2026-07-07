@@ -124,6 +124,9 @@ class RemoteOKScraper(Scraper):
                     parts.append(f"${salary_max}")
                 salary_range = " - ".join(parts)
 
+            raw_date = entry.get("date", "") or ""
+            posted_date = raw_date[:10] if raw_date else None
+
             remote = "remote" in location.lower() or "remote" in str(tags).lower()
             tag_str = ", ".join(tags) if tags else ""
 
@@ -139,6 +142,7 @@ class RemoteOKScraper(Scraper):
                 requirements=tag_str,
                 source="remoteok",
                 salary_range=salary_range,
+                posted_date=posted_date,
             ))
 
         return jobs

@@ -1,5 +1,6 @@
 """Keyword-based matcher with word-boundary matching and continuous scoring."""
 
+import datetime
 import re
 from typing import Optional
 
@@ -53,13 +54,89 @@ GEO_RESTRICTION_RE = re.compile(
     r"only\s+(?:for|in|from|open\s+to)\s+(?:residents|candidates|citizens|people|applicants)?|"
     r"limited\s+to|restricted\s+to|"
     r"requires\s+(?:being|living|working|residing)\s+(?:in|within)|"
-    r"not\s+(?:open\s+to|available\s+(?:for|to))\s+(?:international|candidates?\s+(?:from|outside))"
+    r"not\s+(?:open\s+to|available\s+(?:for|to))\s+(?:international|candidates?\s+(?:from|outside))|"
+    r"us\s+(?:only|based)\b|united\s+states\s+(?:only|based)\b|usa\s+(?:only|based)\b|"
+    r"(?:est|pst|cst|mst|eastern|pacific|central|mountain)\s+time\b"
     r")\b", re.IGNORECASE
 )
 
 
 def _word_boundary(term: str) -> str:
     return r"(?<![a-záéíóúñüç])" + re.escape(term) + r"(?![a-záéíóúñüç])"
+
+SALARY_K_RE = re.compile(r"(\d+)(?:\.?\d*)?k", re.IGNORECASE)
+
+
+def _parse_salary_to_monthly_usd(salary_range: Optional[str]) -> Optional[float]:
+    if not salary_range:
+        return None
+    text = salary_range.strip()
+    if not text:
+        return None
+
+    text_lower = text.lower()
+
+    is_clp = bool(re.search(r"clp", text_lower))
+    is_hourly = bool(re.search(r"(?:/hr|/hour|por hora|/h\b)", text_lower))
+    is_yearly = bool(re.search(r"(?:/yr|/year|/año|anual|per year|per annum|/a\b)", text_lower))
+
+    all_nums = []
+    for token in re.findall(r"[\d,]+(?:\.\d+)?k?", text_lower):
+        val = token.lower()
+        if val.endswith("k"):
+            val_num = float(val[:-1].replace(",", "")) * 1000
+        else:
+            val_num = float(val.replace(",", ""))
+        all_nums.append(val_num)
+
+    if not all_nums:
+        return None
+
+    avg = sum(all_nums) / len(all_nums)
+    monthly = avg
+
+    if is_hourly:
+        monthly *= 160
+    elif is_yearly:
+        monthly /= 12.0
+    elif is_clp:
+        monthly /= 850.0
+    elif avg < 20000:
+        pass
+    else:
+        monthly /= 12.0
+
+    return round(monthly, 0)
+
+
+def _calc_salary_bonus(salary_range: Optional[str]) -> int:
+    monthly = _parse_salary_to_monthly_usd(salary_range)
+    if monthly is None:
+        return 0
+    if monthly >= 3000:
+        return 8
+    if monthly >= 2000:
+        return 5
+    if monthly >= 1000:
+        return 3
+    return 0
+
+
+def _calc_recency_bonus(posted_date: Optional[str]) -> tuple[int, int]:
+    if not posted_date:
+        return 0, 999
+    try:
+        dt = datetime.datetime.strptime(posted_date[:10], "%Y-%m-%d")
+        days_ago = (datetime.datetime.now() - dt).days
+    except (ValueError, TypeError):
+        return 0, 999
+    if days_ago <= 3:
+        return 10, days_ago
+    if days_ago <= 7:
+        return 5, days_ago
+    if days_ago <= 14:
+        return 3, days_ago
+    return 0, days_ago
 
 
 class KeywordMatcher:
@@ -105,10 +182,10 @@ class KeywordMatcher:
         exp_gap_penalty = 0
         exp_match = EXP_RE.search(job_text)
         required_years = int(exp_match.group(1)) if exp_match else 0
-        if required_years > 2:
+        if required_years > 0:
             gap = required_years - self.profile.experience_years
-            if gap > 2:
-                exp_gap_penalty = min(15, round((gap - 2) * 3))
+            if gap > 0:
+                exp_gap_penalty = min(15, round(gap * 3))
                 seniority_penalty += exp_gap_penalty
 
         # Junior bonus
@@ -175,8 +252,12 @@ class KeywordMatcher:
 
         geo_penalty = 15 if geo_restricted else 0
 
+        salary_bonus = _calc_salary_bonus(job.salary_range)
+        recency_bonus, days_ago = _calc_recency_bonus(job.posted_date)
+
         total_score = min(100, max(0, round(
             skill_score + role_score + location_score + title_keywords_score
+            + salary_bonus + recency_bonus
             - seniority_penalty - geo_penalty
         )))
 
@@ -197,6 +278,10 @@ class KeywordMatcher:
             reason_parts.append("-Junior")
         if geo_restricted:
             reason_parts.append("+Restringido")
+        if salary_bonus:
+            reason_parts.append(f"+Salario({salary_bonus})")
+        if recency_bonus:
+            reason_parts.append(f"+Reciente({days_ago}d)")
         reason = " | ".join(reason_parts) if reason_parts else "General match"
 
         return total_score, reason, skills_found, skills_missing

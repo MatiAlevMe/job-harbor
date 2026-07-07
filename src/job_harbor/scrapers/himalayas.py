@@ -95,6 +95,9 @@ class HimalayasScraper(Scraper):
         tag_str = ", ".join(categories) if categories else ""
         combined_desc = f"{title} {company} {tag_str} {description}".strip()
 
+        raw_date = entry.get("pub_date", "") or ""
+        posted_date = raw_date[:10] if raw_date else None
+
         return Job(
             title=title,
             company=company,
@@ -104,6 +107,7 @@ class HimalayasScraper(Scraper):
             description=combined_desc,
             source="himalayas",
             salary_range=salary_str,
+            posted_date=posted_date,
         )
 
     def _is_tech_job(self, title: str, categories: list[str]) -> bool:
