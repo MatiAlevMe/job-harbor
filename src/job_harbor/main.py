@@ -124,7 +124,7 @@ def cmd_run(llm: Optional[str] = None):
         try:
             llm_matcher = LLMMatcher(profile, backend=llm)
             matched = db.get_matched_jobs(min_score=30)
-            for row in matched[:30]:
+            for row in matched[:8]:
                 job = Job(
                     title=row["title"],
                     company=row["company"],
