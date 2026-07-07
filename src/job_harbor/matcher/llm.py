@@ -91,7 +91,8 @@ Devuelve SOLO un JSON válido en este formato (sin markdown, sin explicación ad
 
             return score, reason, skills_match, skills_gap
 
-        except Exception:
+        except Exception as e:
+            print(f"  [dim]Gemini error: {e}[/dim]")
             return self._fallback(job)
 
     def _match_ollama(self, job: Job) -> tuple[float, str, list[str], list[str]]:
