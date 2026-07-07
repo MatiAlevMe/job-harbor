@@ -15,8 +15,9 @@ name: Daily Job Scrape (PRIVATE)
 
 on:
   schedule:
-    # Lunes a viernes 9:00 AM Chile (UTC-4 → 13:00 UTC, UTC-3 → 12:00 UTC)
+    # 9:00 AM Chile (UTC-4 winter) = 13:00 UTC; backup at 10:00 AM = 14:00 UTC
     - cron: '0 13 * * 1-5'
+    - cron: '0 14 * * 1-5'
   workflow_dispatch:
     inputs:
       llm:
@@ -60,9 +61,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: job-harbor/jobs.db
-          key: jobs-db-${{ github.run_id }}
-          restore-keys: |
-            jobs-db-
+          key: jobs-db
 
       - name: Run job harbor
         working-directory: job-harbor
@@ -71,12 +70,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.5-flash' }}
           JOOBLE_API_KEY: ${{ secrets.JOOBLE_API_KEY }}
-        run: |
-          LLM_FLAG=""
-          if [ "${{ inputs.llm }}" != "none" ]; then
-            LLM_FLAG="--llm ${{ inputs.llm }}"
-          fi
-          python -m job_harbor run $LLM_FLAG
+        run: python -m job_harbor run --llm gemini
 
       - name: Upload results
         uses: actions/upload-artifact@v4
