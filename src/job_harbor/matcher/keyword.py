@@ -81,13 +81,16 @@ def _parse_salary_to_monthly_usd(salary_range: Optional[str]) -> Optional[float]
     is_yearly = bool(re.search(r"(?:/yr|/year|/año|anual|per year|per annum|/a\b)", text_lower))
 
     all_nums = []
-    for token in re.findall(r"[\d,]+(?:\.\d+)?k?", text_lower):
-        val = token.lower()
-        if val.endswith("k"):
-            val_num = float(val[:-1].replace(",", "")) * 1000
-        else:
-            val_num = float(val.replace(",", ""))
-        all_nums.append(val_num)
+    for token in re.findall(r"\d[\d,]*(?:\.\d+)?k?", text_lower):
+        try:
+            val = token.lower()
+            if val.endswith("k"):
+                val_num = float(val[:-1].replace(",", "")) * 1000
+            else:
+                val_num = float(val.replace(",", ""))
+            all_nums.append(val_num)
+        except ValueError:
+            continue
 
     if not all_nums:
         return None
