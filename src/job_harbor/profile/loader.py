@@ -188,7 +188,7 @@ def load_profile(cv_rel_path: Optional[str] = None) -> Profile:
     # Load role-specific resume variants (Spanish by default, fallback English)
     resume_dir = os.path.join(repo_path, "resume")
     resume_variants: dict[str, str] = {}
-    _known_variants = ["ai-engineer", "qa-automation", "full-stack", "backend"]
+    _known_variants = ["ai-engineer", "qa-automation", "full-stack", "backend", "mlops-engineer", "data-engineer", "platform-engineer"]
     for role in _known_variants:
         candidate = os.path.join(resume_dir, f"resume-{role}-es.adoc")
         if not os.path.isfile(candidate):
