@@ -92,7 +92,7 @@ Devuelve SOLO un JSON válido en este formato (sin markdown, sin explicación ad
                 skills_gap = data.get("skills_gap", [])
                 reason = data.get("reason", "Evaluado por Gemini")
 
-                return score, reason, skills_match, skills_gap
+                return score, f"✨ IA: {reason}", skills_match, skills_gap
 
             except Exception as e:
                 estr = str(e)
@@ -129,7 +129,7 @@ Devuelve SOLO un JSON válido en este formato (sin markdown, sin explicación ad
             skills_gap = data.get("skills_gap", [])
             reason = data.get("reason", "Evaluado por Ollama")
 
-            return score, reason, skills_match, skills_gap
+            return score, f"✨ IA: {reason}", skills_match, skills_gap
 
         except Exception:
             return self._fallback(job)
