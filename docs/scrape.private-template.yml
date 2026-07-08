@@ -7,11 +7,17 @@ name: Daily Job Scrape (PRIVATE)
 #    Pasos manuales en GitHub:
 #    1. Crear repo privado (ej: MatiAlevMe/job-harbor-scraper)
 #    2. Subir este archivo a .github/workflows/scrape.yml en el repo PRIVADO
-#    3. Settings > Secrets and variables > Actions > agregar:
+#    3. Crear heartbeat.yml en .github/workflows/heartbeat.yml (copia de
+#       la que está en job-harbor-priv)
+#    4. Settings > Secrets and variables > Actions > agregar:
 #         - GEMINI_API_KEY   (de https://aistudio.google.com/apikey)
 #         - JOOBLE_API_KEY    (de https://jooble.org/api/about)
-#         - GH_PAT           (token con solo public_repo o repo scope)
-#    4. El cron se hereda de aquí (Lun-Vie 9:00 AM Chile)
+#         - GH_PAT           (token con solo repo scope)
+#    5. El cron se hereda de aquí (Lun-Vie 9:00 AM Chile)
+#
+#    ⚠️  GitHub Actions free tier cron es poco fiable (saltos/retrasos).
+#    heartbeat.yml corre cada hora como backup.
+#    Alternativa externa (más fiable): cron-job.org (ver heartbeat.yml)
 
 on:
   schedule:

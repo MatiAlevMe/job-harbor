@@ -6,6 +6,8 @@ natural language reasoning for each match score.
 
 import os
 import json
+import re
+import time
 from typing import Optional
 
 from ..model import Profile, Job
@@ -95,12 +97,12 @@ Devuelve SOLO un JSON válido en este formato (sin markdown, sin explicación ad
             except Exception as e:
                 estr = str(e)
                 is_quota = "429" in estr or "RESOURCE_EXHAUSTED" in estr or "quota" in estr.lower()
-                if is_quota and attempt < 2:
-                    # Extract retry delay if available
-                    import re as _re
-                    m = _re.search(r"retry in ([\d.]+)s", estr)
-                    delay = float(m.group(1)) + 2 if m else 45
-                    print(f"  [dim]Gemini quota exceeded, retrying in {delay:.0f}s...[/dim]")
+                is_server_error = "500" in estr or "503" in estr or "INTERNAL" in estr or "unavailable" in estr.lower()
+                if (is_quota or is_server_error) and attempt < 2:
+                    m = re.search(r"retry in ([\d.]+)s", estr)
+                    delay = float(m.group(1)) + 2 if m else (60 if is_server_error else 45)
+                    tag = "server error" if is_server_error else "quota"
+                    print(f"  [dim]Gemini {tag}, retrying in {delay:.0f}s...[/dim]")
                     time.sleep(delay)
                     continue
                 print(f"  [dim]Gemini error: {e}[/dim]")
