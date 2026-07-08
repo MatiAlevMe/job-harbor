@@ -185,6 +185,18 @@ def load_profile(cv_rel_path: Optional[str] = None) -> Profile:
         with open(resume_path, "r", encoding="utf-8") as f:
             raw_text = f.read()
 
+    # Load role-specific resume variants (Spanish by default, fallback English)
+    resume_dir = os.path.join(repo_path, "resume")
+    resume_variants: dict[str, str] = {}
+    _known_variants = ["ai-engineer", "qa-automation", "full-stack", "backend"]
+    for role in _known_variants:
+        candidate = os.path.join(resume_dir, f"resume-{role}-es.adoc")
+        if not os.path.isfile(candidate):
+            candidate = os.path.join(resume_dir, f"resume-{role}-en.adoc")
+        if os.path.isfile(candidate):
+            with open(candidate, "r", encoding="utf-8") as f:
+                resume_variants[role] = f.read()
+
     name = _parse_adoc_field(text, "Name") or "Matías Vizancio Alevropulos Erlbaun"
 
     title_match = re.search(r"\*{0,2}_?([^*_]+Full Stack[^_]*)_?\*{0,2}", text)
@@ -217,4 +229,5 @@ def load_profile(cv_rel_path: Optional[str] = None) -> Profile:
         locations=["Valparaíso", "Santiago", "Remoto Chile", "Remoto Mundial"],
         languages=["Spanish", "English C2"],
         raw_text=raw_text,
+        resume_variants=resume_variants,
     )

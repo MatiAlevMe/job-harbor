@@ -14,6 +14,7 @@ class Profile:
     locations: list[str] = field(default_factory=list)
     languages: list[str] = field(default_factory=list)
     raw_text: str = ""
+    resume_variants: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass

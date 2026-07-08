@@ -27,8 +27,22 @@ class LLMMatcher:
         self.profile = profile
         self.backend = backend
 
+    @staticmethod
+    def _detect_role(title: str) -> str:
+        t = title.lower()
+        if re.search(r'\b(qa\s*(automation|engineer|analyst)|test\s*(automation|engineer)|selenium|playwright|sdet)\b', t):
+            return "qa-automation"
+        if re.search(r'\b(ai\s*engineer|machine\s*learning|ml\s*engineer|mlops|data\s*scientist|deep\s*learning|llm|rag|gen\s*ai)\b', t):
+            return "ai-engineer"
+        if re.search(r'\b(full\s*stack|fullstack)\b', t):
+            return "full-stack"
+        if re.search(r'\b(back\s*end|backend)\b', t):
+            return "backend"
+        return "generic"
+
     def _build_prompt(self, job: Job) -> str:
-        raw = self.profile.raw_text
+        role = self._detect_role(job.title)
+        raw = self.profile.resume_variants.get(role, self.profile.raw_text)
         raw = raw[:3000] if raw else ""
         return f"""Eres un reclutador experto evaluando qué tan bien calza una oferta con un perfil.
 
