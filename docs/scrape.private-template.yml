@@ -90,11 +90,11 @@ jobs:
           import sqlite3, datetime
           conn = sqlite3.connect('jobs.db')
           rows = conn.execute(
-              'SELECT title, company, match_score, url, salary_range, posted_date FROM jobs WHERE match_score >= 30 ORDER BY match_score DESC LIMIT 15'
+              'SELECT title, company, match_score, url, salary_range, posted_date, match_reason FROM jobs WHERE match_score >= 30 ORDER BY match_score DESC LIMIT 15'
           ).fetchall()
           if rows:
               for r in rows:
-                  title, company, score, url, salary, posted = r[0], r[1], r[2], r[3], r[4], r[5]
+                  title, company, score, url, salary, posted, reason = r[0], r[1], r[2], r[3], r[4], r[5], r[6] or ''
                   extras = []
                   if salary:
                       extras.append(f'S:{salary}')
@@ -106,9 +106,14 @@ jobs:
                       except Exception:
                           pass
                   label = ' [' + ', '.join(extras) + ']' if extras else ''
-                  print(f'- [{score:.0f}%]{label} {company} — {title}')
+                  is_ia = reason.startswith('\u2728')
+                  tag = ' \U0001f916' if is_ia else ''
+                  print(f'- [{score:.0f}%]{label}{tag} {company} — {title}')
                   if url:
                       print(f'  {url}')
+                  if is_ia:
+                      excerpt = reason[5:85].strip()
+                      print(f'  > {excerpt}...')
           else:
               print('No matches found above threshold.')
           conn.close()
