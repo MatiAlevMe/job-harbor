@@ -1,26 +1,24 @@
 name: Daily Job Scrape (PRIVATE)
 
 # ⚠️  Este workflow NO debe vivir en el repo público.
-#    Cópialo a un repo PRIVADO (ej: job-harbor-scraper) para que el
-#    daily scrape y los resultados NO sean visibles públicamente.
+#    Cópialo a un repo PRIVADO para que los resultados NO sean visibles.
 #
-#    Pasos manuales en GitHub:
+#    Pasos:
 #    1. Crear repo privado (ej: MatiAlevMe/job-harbor-scraper)
 #    2. Subir este archivo a .github/workflows/scrape.yml en el repo PRIVADO
 #    3. Settings > Secrets and variables > Actions > agregar:
 #         - GEMINI_API_KEY   (de https://aistudio.google.com/apikey)
 #         - JOOBLE_API_KEY    (de https://jooble.org/api/about)
-#         - GH_PAT           (token con solo repo scope)
-#    4. El cron se hereda de aquí (Lun-Vie 9:00 AM Chile)
+#         - GH_PAT           (token con scope public_repo)
+#    4. El cron corre Lun-Vie 9:00 AM Chile
 #
-#    ⚠️  GitHub Actions free tier cron es poco fiable (saltos/retrasos).
-#    Alternativa externa (más fiable): cron-job.org
+#    ⚠️  El cron de GitHub Actions free tier puede saltarse.
+#    Para disparar manualmente: gh workflow run "..." --ref main -f llm=gemini
 
 on:
   schedule:
-    # 9:00 AM Chile (UTC-4 winter) = 13:00 UTC; backup at 10:00 AM = 14:00 UTC
+    # 9:00 AM Chile (UTC-4 winter) = 13:00 UTC
     - cron: '0 13 * * 1-5'
-    - cron: '0 14 * * 1-5'
   workflow_dispatch:
     inputs:
       llm:

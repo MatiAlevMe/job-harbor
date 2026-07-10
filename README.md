@@ -70,6 +70,22 @@ python -m job_harbor run
 - [Plan del MVP](/docs/PLAN.md)
 - [Guía de configuración](/docs/CONFIGURATION.md)
 
+## Cómo ver los resultados (en job-harbor-priv)
+
+```bash
+# Últimos runs
+gh run list --workflow "Daily Job Scrape (PRIVATE)" --limit 5
+
+# Ver el resumen de un run
+gh run view <run-id> --log | Select-String "Relevantes|🤖|✨"
+
+# Descargar la base de datos
+gh run download <run-id>   # → job-results/jobs.db
+
+# Consultar la DB
+sqlite3 job-results/jobs.db "SELECT title, match_score, match_reason FROM jobs WHERE match_reason LIKE '%IA:%' ORDER BY match_score DESC;"
+```
+
 ## Licencia
 
 MIT

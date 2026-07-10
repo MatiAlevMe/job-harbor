@@ -165,7 +165,7 @@ def load_profile(cv_rel_path: Optional[str] = None) -> Profile:
             education="Ingeniero Civil Informático — PUCV (2025)",
             projects=["KineViz", "FireGuard", "MCP Server"],
             preferred_roles=["QA Automation", "Full Stack", "Backend"],
-            locations=["Valparaíso", "Santiago", "Remoto Chile", "Remoto Mundial"],
+        locations=["Valparaíso", "Viña del Mar", "Reñaca", "Santiago", "Remoto Chile", "Remoto Mundial"],
             languages=["Spanish", "English C2"],
         )
 
