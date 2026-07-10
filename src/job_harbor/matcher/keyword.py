@@ -146,6 +146,52 @@ class KeywordMatcher:
     def __init__(self, profile: Profile):
         self.profile = profile
 
+    @staticmethod
+    def _calc_location_tier(job: Job) -> tuple[int, str]:
+        job_loc = (job.location or "").lower()
+        search_text = f"{job.title} {job.company} {job.description} {job_loc}".lower()
+
+        is_remote = job.remote or bool(re.search(r"\b(?:remote|remoto|worldwide|anywhere)\b", job_loc))
+        is_hybrid = bool(re.search(r"\b(?:h[ií]brido|hibrido|hybrid|mixed)\b", search_text))
+        if not is_hybrid:
+            has_presencial = bool(re.search(r"\bpresencial\b", job_loc))
+            has_remoto_word = bool(re.search(r"\bremoto\b", job_loc))
+            is_hybrid = has_presencial and has_remoto_word
+
+        in_valpo = bool(re.search(r"\b(?:reñaca|viña\s*del\s*mar|valpara[íi]so)\b", search_text))
+        in_santiago = bool(re.search(r"\bsantiago\b", search_text))
+        in_chile = bool(re.search(r"\bchile\b", search_text))
+
+        geo_restricted = bool(LOCATION_COUNTRY_RE.search(job_loc))
+        if not geo_restricted:
+            geo_restricted = bool(LOCATION_COUNTRY_RE.search(search_text))
+        if not geo_restricted:
+            geo_restricted = bool(GEO_RESTRICTION_RE.search(search_text))
+
+        if is_hybrid:
+            if in_valpo:
+                return 10, "Híbrido Valparaíso"
+            if in_santiago:
+                return 5, "Híbrido Santiago"
+            if in_chile:
+                return 1, "Híbrido Chile"
+            return 5, "Híbrido"
+        if is_remote:
+            if in_chile:
+                return 13, "Remoto Chile"
+            if not geo_restricted:
+                return 15, "Remoto Mundial"
+            return 5, "Remoto Restringido"
+        if in_valpo:
+            return 8, "Presencial Valparaíso"
+        if in_santiago:
+            return 3, "Presencial Santiago"
+        if in_chile:
+            return -2, "Presencial Chile"
+        if geo_restricted:
+            return -15, "Restringido"
+        return 0, "Sin match"
+
     def match(self, job: Job) -> tuple[float, str, list[str], list[str]]:
         job_text = f"{job.title} {job.company} {job.description}".lower()
         reqs_text = (job.requirements or "").lower()
@@ -195,40 +241,8 @@ class KeywordMatcher:
         if JUNIOR_RE.search(title_lower):
             seniority_penalty -= 5
 
-        # --- Location matching + geo-restriction ---
-        location_ok = False
-        job_location_lower = (job.location or "").lower()
-        combined_lower = f"{job.title} {job.company} {job.description}".lower()
-
-        is_remote_by_loc = bool(re.search(r"\b(?:remote|remoto|worldwide|anywhere)\b", job_location_lower))
-        is_remote_any = job.remote or is_remote_by_loc
-
-        geo_restricted = bool(LOCATION_COUNTRY_RE.search(job_location_lower))
-        if not geo_restricted:
-            geo_restricted = bool(LOCATION_COUNTRY_RE.search(combined_lower))
-        if not geo_restricted:
-            geo_restricted = bool(GEO_RESTRICTION_RE.search(combined_lower))
-
-        for loc in self.profile.locations:
-            if loc == "Remoto Chile":
-                if (is_remote_any and re.search(r"\bchile\b", job_location_lower, re.IGNORECASE)):
-                    location_ok = True
-                    break
-                if re.search(r"\bremoto\b", combined_lower) and re.search(r"\bchile\b", combined_lower):
-                    location_ok = True
-                    break
-                if re.search(r"\bremote\b", combined_lower) and re.search(r"\bchile\b", combined_lower):
-                    location_ok = True
-                    break
-            elif loc == "Remoto Mundial":
-                if is_remote_any and not geo_restricted:
-                    location_ok = True
-                    break
-            else:
-                pattern = _word_boundary(loc.lower())
-                if re.search(pattern, combined_lower):
-                    location_ok = True
-                    break
+        # --- Location tier ---
+        location_score, location_tag = self._calc_location_tier(job)
 
         # --- Scores ---
         total_skills = len(self.profile.skills)
@@ -240,7 +254,6 @@ class KeywordMatcher:
             skill_score = round(15 + 25 * min(1.0, matched_count / half))
 
         role_score = 25 if role_match else 0
-        location_score = 15 if location_ok else 0
 
         title_keywords_score = 0
         for role in self.profile.preferred_roles:
@@ -253,15 +266,13 @@ class KeywordMatcher:
             if title_keywords_score:
                 break
 
-        geo_penalty = 15 if geo_restricted else 0
-
         salary_bonus = _calc_salary_bonus(job.salary_range)
         recency_bonus, days_ago = _calc_recency_bonus(job.posted_date)
 
         total_score = min(100, max(0, round(
             skill_score + role_score + location_score + title_keywords_score
             + salary_bonus + recency_bonus
-            - seniority_penalty - geo_penalty
+            - seniority_penalty
         )))
 
         # --- Reason ---
@@ -269,8 +280,8 @@ class KeywordMatcher:
         if skills_found:
             reason_parts.append(f"Skills: {', '.join(skills_found[:5])}")
             reason_parts.append(f"Match: {matched_count}/{total_skills}")
-        if location_ok:
-            reason_parts.append("Location OK")
+        if location_tag != "Sin match":
+            reason_parts.append(location_tag)
         if role_match:
             reason_parts.append("Rol coincide")
         if has_senior_title:
@@ -279,8 +290,6 @@ class KeywordMatcher:
             reason_parts.append(f"+{required_years}a exp")
         if JUNIOR_RE.search(title_lower):
             reason_parts.append("-Junior")
-        if geo_restricted:
-            reason_parts.append("+Restringido")
         if salary_bonus:
             reason_parts.append(f"+Salario({salary_bonus})")
         if recency_bonus:
