@@ -137,15 +137,15 @@ def cmd_run(llm: Optional[str] = None):
                     posted_date=row["posted_date"],
                 )
                 score, reason, sf, sg = llm_matcher.match(job)
-                # Never let a failed LLM call (fallback score 0) wipe out a
-                # good keyword score. Only apply when the LLM actually
-                # evaluated, and never drop below the existing score.
+                # LLM fallback (API unavailable) — skip, don't touch existing score
                 if reason == "LLM no disponible":
                     console.print(
                         f"  [dim]LLM skip (unavailable): {job.title[:40]}[/dim]"
                     )
                     continue
-                db.update_job_score(row["url"], max(score, row["match_score"]), reason)
+                # Trust the LLM score: it can both upgrade and downgrade jobs
+                # based on semantic analysis of the full description vs profile.
+                db.update_job_score(row["url"], score, reason)
         except Exception as e:
             console.print(f"  [red]LLM matcher error: {e}[/red]")
 
