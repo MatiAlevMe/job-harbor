@@ -10,7 +10,7 @@ from .base import Scraper
 from ..model import Job
 
 
-API_URL = "https://jooble.org/api/{}"
+API_URL = "https://cl.jooble.org/api/{}"
 
 SEARCH_QUERIES = [
     "full stack developer",
